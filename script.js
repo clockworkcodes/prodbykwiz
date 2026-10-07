@@ -231,16 +231,44 @@ const player = (function initPlayer() {
   const main = document.querySelector('main');
   const heroWrap = document.querySelector('.hero .overlap');
   const pathWrap = document.querySelector('.about .overlap');
-  if (!main || !heroWrap || !pathWrap) return;
+  const heroBlocks = document.querySelector('.hero__blocks');
+  const aboutCols = document.querySelector('.about__cols');
+  if (!main || !heroWrap || !pathWrap || !heroBlocks || !aboutCols) return;
+
+  const HUB_RATIO = 0.156; // радиус втулки в долях радиуса диска (см. .shape__cd в style.css)
+  const HUB_MARGIN = 16;
+
+  // Положение по вертикали внутри <main> без учёта transform-анимаций
+  const pageY = (el) => {
+    let y = 0;
+    for (let node = el; node && node !== main; node = node.offsetParent) y += node.offsetTop;
+    return y;
+  };
+
+  const measure = () => {
+    const top = pageY(heroWrap) + heroWrap.offsetHeight * 0.57;
+    const bottom = pageY(pathWrap) + pathWrap.offsetHeight * 0.67;
+    return { top, size: bottom - top };
+  };
 
   const update = () => {
-    const origin = main.getBoundingClientRect().top;
-    const hero = heroWrap.getBoundingClientRect();
-    const path = pathWrap.getBoundingClientRect();
-    const top = hero.top - origin + hero.height * 0.57;
-    const bottom = path.top - origin + path.height * 0.67;
-    main.style.setProperty('--shape-top', `${top.toFixed(1)}px`);
-    main.style.setProperty('--shape-size', `${(bottom - top).toFixed(1)}px`);
+    // Отверстие диска должно попадать в просвет между текстом первого и второго экрана.
+    // Если не помещается — раздвигаем экраны (--hub-space), пока не встанет.
+    let space = 0;
+    let shape;
+    for (let pass = 0; pass < 6; pass++) {
+      main.style.setProperty('--hub-space', `${space.toFixed(1)}px`);
+      shape = measure();
+      const center = shape.top + shape.size / 2;
+      const hub = (shape.size / 2) * HUB_RATIO + HUB_MARGIN;
+      const above = pageY(heroBlocks) + heroBlocks.offsetHeight;
+      const below = pageY(aboutCols);
+      const overlap = Math.max(above - (center - hub), center + hub - below);
+      if (overlap <= 0) break;
+      space += overlap / 0.46 + 1; // сдвиг на s двигает центр на s/2 и чуть увеличивает втулку
+    }
+    main.style.setProperty('--shape-top', `${shape.top.toFixed(1)}px`);
+    main.style.setProperty('--shape-size', `${shape.size.toFixed(1)}px`);
   };
 
   update();

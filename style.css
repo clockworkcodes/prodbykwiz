@@ -384,6 +384,7 @@ main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: min(90vw, 110vh);
+  margin-top: var(--hub-space, 0px); /* место под отверстие диска, считает script.js */
 }
 
 .about .overlap {
