@@ -1,0 +1,708 @@
+/* =========================================================
+   ПАЛИТРА — меняй цвета только здесь
+   ========================================================= */
+:root {
+  --bg: #0f1535;             /* фон страницы */
+  --shape: #8c9bd4;          /* полукруги */
+  --title: #90a6ca;          /* гигантские заголовки (цвет на тёмном фоне) */
+  --text-on-shape: #141a3d;  /* мелкий текст поверх полукругов */
+  --text-on-bg: #aab6ea;     /* мелкий текст на тёмном фоне */
+  --accent: #8c9bd4;         /* плеер, hover иконок, кольца, фокус */
+
+  /* Цвет для mix-blend-mode: difference. Считается автоматически
+     в script.js как (--title + --bg), чтобы заголовок на фоне был
+     ровно цвета --title, а поверх фигуры инвертировался.
+     Значение ниже — запасное, если JS выключен. */
+  --title-blend: #9fbbff;
+
+  /* Производные оттенки — считаются сами из цветов выше */
+  --shape-light: color-mix(in srgb, var(--shape) 86%, white);
+  --shape-deep: color-mix(in srgb, var(--shape) 86%, black);
+  --rail: color-mix(in srgb, var(--text-on-bg) 20%, transparent);
+  --surface: color-mix(in srgb, var(--text-on-bg) 6%, transparent);
+
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --shape-size: max(104vw, 120vh);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--rail) var(--bg);
+}
+
+html.is-loading main {
+  visibility: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-on-bg);
+  font-family: var(--font);
+  font-weight: 500;
+  line-height: 1.3;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Плёночное зерно поверх всей страницы */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+h1,
+h2,
+p,
+ul {
+  margin: 0;
+  padding: 0;
+}
+
+ul {
+  list-style: none;
+}
+
+/* ---------- Экран ---------- */
+
+.screen {
+  position: relative;
+  isolation: isolate; /* blend-эффект остаётся внутри секции */
+  overflow: hidden;
+  overflow: clip;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg);
+  text-align: center;
+}
+
+/* Обёртка: гигантский текст + полукруг, который он пересекает */
+.overlap {
+  position: relative;
+  width: 100%;
+}
+
+/* .shape двигает скролл, .shape__disc — курсор и бит */
+.shape {
+  position: absolute;
+  left: calc(50% - var(--shape-size) / 2);
+  z-index: 0;
+  width: var(--shape-size);
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
+.shape__disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 22%, var(--shape-light), var(--shape) 45%, var(--shape-deep) 100%);
+  transform: translate3d(calc(var(--mx, 0) * 1px), calc(var(--my, 0) * 1px), 0)
+    scale(calc(1 + var(--beat, 0) * 0.03));
+  will-change: transform;
+  box-shadow: 0 0 10vw color-mix(in srgb, var(--shape) 20%, transparent);
+}
+
+/* Бороздки пластинки */
+.shape__disc::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 15px, color-mix(in srgb, var(--text-on-shape) 9%, transparent) 15px 16px);
+}
+
+/* Блик на пластинке: крутится, пока играет бит */
+.shape__disc::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    transparent 0 18%,
+    color-mix(in srgb, white 16%, transparent) 26%,
+    transparent 34% 68%,
+    color-mix(in srgb, white 12%, transparent) 76%,
+    transparent 84%
+  );
+  animation: spin 12s linear infinite paused;
+}
+
+.is-playing .shape__disc::after {
+  animation-play-state: running;
+}
+
+/* Орбита с двумя «спутниками» вокруг круга */
+.shape__orbit {
+  position: absolute;
+  inset: -3.2%;
+  border: 1px dashed color-mix(in srgb, var(--text-on-bg) 34%, transparent);
+  border-radius: 50%;
+  animation: spin 240s linear infinite;
+}
+
+.shape__orbit::before,
+.shape__orbit::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 14px 2px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.shape__orbit::before {
+  top: -5px;
+}
+
+.shape__orbit::after {
+  bottom: -5px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Мерцающие точки на фоне (расставляет script.js) */
+.spark {
+  position: absolute;
+  z-index: -1;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: var(--text-on-bg);
+  opacity: 0.25;
+  animation: twinkle var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+
+@keyframes twinkle {
+  to {
+    opacity: 0.95;
+    transform: translateY(-10px) scale(1.4);
+  }
+}
+
+/* Кольцо, которое следует за курсором */
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: -1.125rem 0 0 -1.125rem;
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+
+.cursor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--title-blend);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s ease, scale 0.45s var(--ease-out), background-color 0.3s ease;
+}
+
+.cursor.is-visible::before {
+  opacity: 0.8;
+}
+
+.cursor.is-active::before {
+  scale: 1.9;
+  background: color-mix(in srgb, var(--title-blend) 22%, transparent);
+}
+
+/* Кольца-волны: расходятся от круга, пока играет бит */
+.shape__ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.is-playing .shape__ring {
+  animation: ripple 2.7s linear infinite;
+}
+
+.is-playing .shape__ring:nth-of-type(3) {
+  animation-delay: 0.9s;
+}
+
+.is-playing .shape__ring:nth-of-type(4) {
+  animation-delay: 1.8s;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.16);
+    opacity: 0;
+  }
+}
+
+.giant {
+  position: relative;
+  z-index: 1;
+  color: var(--title-blend);
+  mix-blend-mode: difference;
+  white-space: nowrap;
+  text-shadow: 0 0 0.1em color-mix(in srgb, var(--title-blend) 20%, transparent);
+}
+
+.split {
+  display: inline-block;
+}
+
+/* ---------- Блоки с текстом ---------- */
+
+.block {
+  position: relative;
+  z-index: 1;
+  color: var(--text-on-shape);
+}
+
+.block__title {
+  font-size: clamp(1.2rem, 2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.block__title:not(.block__title--small)::after {
+  content: "";
+  display: block;
+  width: 1.5rem;
+  height: 2px;
+  margin: 0.45em auto 0;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.4;
+}
+
+.block__title--small {
+  font-size: clamp(1rem, 1.6vw, 1.6rem);
+}
+
+.block__text {
+  margin-top: 0.6em;
+  font-size: clamp(0.8rem, 1.2vw, 1.15rem);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* ---------- Секция 1 ---------- */
+
+.hero {
+  padding: clamp(4rem, 19vh, 13rem) 0 clamp(3.5rem, 9vh, 6rem);
+}
+
+.hero .shape {
+  top: 57%;
+  margin-left: -2.5vw;
+}
+
+.giant--hero {
+  cursor: default;
+  font-size: 13vw;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.hero__blocks {
+  display: grid;
+  gap: clamp(1.75rem, 5.5vh, 3.5rem);
+  margin-top: clamp(1.5rem, 5vh, 3.5rem);
+}
+
+.block__list li {
+  transition: letter-spacing 0.5s var(--ease-out);
+}
+
+.block__list li:hover {
+  letter-spacing: 0.12em;
+}
+
+/* Подсказка «листай вниз» */
+.scroll-cue {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  z-index: 1;
+  width: 1px;
+  height: clamp(1.75rem, 5vh, 3rem);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text-on-shape) 22%, transparent);
+}
+
+.scroll-cue::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--text-on-shape);
+  animation: cue 2s var(--ease-out) infinite;
+}
+
+@keyframes cue {
+  0% {
+    transform: translateY(-100%);
+  }
+  60%,
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* ---------- Секция 2 ---------- */
+
+.about {
+  padding: clamp(2.5rem, 11vh, 7rem) 0 clamp(1.75rem, 5vh, 3rem);
+}
+
+.about__cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 90vw;
+}
+
+.about .overlap {
+  margin-top: clamp(1.75rem, 6vh, 4rem);
+}
+
+.about .shape {
+  bottom: 33%;
+}
+
+.giant--path {
+  font-size: 5.7vw;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Плеер ---------- */
+
+.player {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 2rem, 35rem);
+  margin: clamp(2rem, 7vh, 4.5rem) 0;
+  padding: 1rem 1.25rem 0.9rem 1rem;
+  border: 1px solid var(--rail);
+  border-radius: 1.75rem;
+  background: var(--surface);
+  text-align: left;
+  transition: border-color 0.5s ease, box-shadow 0.5s ease;
+}
+
+.player.is-playing {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 1.5rem 4rem -2rem color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.player__main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.player__toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  cursor: pointer;
+  transform: scale(calc(1 + var(--beat, 0) * 0.08));
+  transition: background-color 0.3s ease, scale 0.3s var(--ease-out);
+}
+
+.player__toggle svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentColor;
+}
+
+.player__toggle:hover {
+  background: var(--shape-light);
+  scale: 1.08;
+}
+
+.player__toggle:active {
+  scale: 0.94;
+}
+
+.icon-pause,
+.player.is-playing .icon-play {
+  display: none;
+}
+
+.player.is-playing .icon-pause {
+  display: block;
+}
+
+.player__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.player__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Эквалайзер: высоту столбиков задаёт script.js */
+.player__eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  height: 0.9rem;
+}
+
+.player__eq i {
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: scaleY(var(--level, 0.18));
+  transform-origin: bottom;
+}
+
+.player__title {
+  flex: 1;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.player__time {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--text-on-bg) 70%, transparent);
+}
+
+/* Волна: столбики рисует script.js, поверх лежит невидимый ползунок перемотки */
+.player__wave {
+  position: relative;
+  height: 2.6rem;
+  margin-top: 0.35rem;
+  border-radius: 0.5rem;
+}
+
+.player__wave:has(.player__seek:focus-visible) {
+  outline: 2px solid var(--shape-light);
+  outline-offset: 3px;
+}
+
+.player__bars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.player__bars i {
+  flex: 1;
+  height: calc(var(--h, 0.3) * 100%);
+  min-height: 3px;
+  border-radius: 2px;
+  background: var(--rail);
+  transition: background-color 0.25s ease, height 0.6s var(--ease-out), transform 0.3s var(--ease-out);
+}
+
+.player__bars i.is-played {
+  background: var(--accent);
+}
+
+.player__wave:hover .player__bars i {
+  transform: scaleY(1.12);
+}
+
+.player__seek {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.player__list {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--rail);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.player__list::-webkit-scrollbar {
+  display: none;
+}
+
+.player__list:empty {
+  display: none;
+}
+
+.player__chip {
+  flex-shrink: 0;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--rail);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-on-bg);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.player__chip:hover {
+  border-color: var(--accent);
+  color: var(--shape-light);
+}
+
+.player__chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+/* ---------- Подвал и соцсети ---------- */
+
+.contact {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding: 0 1rem;
+}
+
+.contact__text {
+  font-size: clamp(0.8rem, 1.2vw, 1.15rem);
+}
+
+.socials {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.socials__link {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 1px solid var(--rail);
+  border-radius: 50%;
+  color: var(--text-on-bg);
+  transition: color 0.35s ease, background-color 0.35s ease, border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+.socials__link svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.socials__link:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0.75rem 2rem -0.75rem var(--accent);
+}
+
+.socials__link:hover svg {
+  transform: scale(1.15) rotate(-8deg);
+}
+
+/* ---------- Фокус с клавиатуры ---------- */
+
+:focus-visible {
+  outline: 2px solid var(--shape-light);
+  outline-offset: 3px;
+}
+
+/* ---------- Мобильные ---------- */
+
+@media (max-width: 560px) {
+  .about__cols {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+
+  .block__text {
+    font-size: 0.85rem;
+  }
+
+  .giant--path {
+    font-size: 6.4vw;
+  }
+}
+
+/* ---------- Без анимаций ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .shape__disc,
+  .player__toggle {
+    transform: none;
+  }
+}
