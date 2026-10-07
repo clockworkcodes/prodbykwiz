@@ -9,6 +9,11 @@
   --text-on-bg: #aab6ea;     /* мелкий текст на тёмном фоне */
   --accent: #8c9bd4;         /* плеер, hover иконок, кольца, фокус */
 
+  /* Радужные блики на CD-диске */
+  --cd-glint-1: #9fe8ff;
+  --cd-glint-2: #cdb8ff;
+  --cd-glint-3: #ffd3ee;
+
   /* Цвет для mix-blend-mode: difference. Считается автоматически
      в script.js как (--title + --bg), чтобы заголовок на фоне был
      ровно цвета --title, а поверх фигуры инвертировался.
@@ -111,7 +116,7 @@ main {
   width: 100%;
 }
 
-/* Один круг на всю страницу. .shape__disc двигают курсор и бит */
+/* Один CD-диск на всю страницу. .shape__disc двигают курсор и бит, .shape__cd крутится */
 .shape {
   position: absolute;
   top: var(--shape-top);
@@ -126,40 +131,50 @@ main {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 22%, var(--shape-light), var(--shape) 45%, var(--shape-deep) 100%);
   transform: translate3d(calc(var(--mx, 0) * 1px), calc(var(--my, 0) * 1px), 0)
     scale(calc(1 + var(--beat, 0) * 0.03));
   will-change: transform;
   box-shadow: 0 0 10vw color-mix(in srgb, var(--shape) 20%, transparent);
 }
 
-/* Бороздки пластинки */
-.shape__disc::before {
-  content: "";
+/* Поверхность диска. Слои сверху вниз: отверстие и прозрачная втулка, кромка,
+   бороздки, радужные блики, свет, основной цвет */
+.shape__cd {
+  --hub: color-mix(in srgb, var(--shape-light) 55%, var(--bg));
+  --hub-line: color-mix(in srgb, var(--text-on-shape) 45%, transparent);
+
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: repeating-radial-gradient(circle, transparent 0 15px, color-mix(in srgb, var(--text-on-shape) 9%, transparent) 15px 16px);
-}
-
-/* Блик на пластинке: крутится, пока играет бит */
-.shape__disc::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(
-    transparent 0 18%,
-    color-mix(in srgb, white 16%, transparent) 26%,
-    transparent 34% 68%,
-    color-mix(in srgb, white 12%, transparent) 76%,
-    transparent 84%
-  );
-  animation: spin 12s linear infinite paused;
-}
-
-.is-playing .shape__disc::after {
-  animation-play-state: running;
+  background:
+    radial-gradient(
+      circle closest-side,
+      var(--bg) 0 6.6%,
+      var(--hub-line) 6.6% 7%,
+      var(--hub) 7% 12.6%,
+      var(--hub-line) 12.6% 12.9%,
+      var(--hub) 12.9% 15.2%,
+      var(--hub-line) 15.2% 15.6%,
+      transparent 15.6% 98.6%,
+      color-mix(in srgb, white 30%, transparent) 98.6% 100%
+    ),
+    repeating-radial-gradient(circle, transparent 0 15px, color-mix(in srgb, var(--text-on-shape) 8%, transparent) 15px 16px),
+    conic-gradient(
+      transparent 0 6%,
+      color-mix(in srgb, var(--cd-glint-1) 26%, transparent) 11%,
+      color-mix(in srgb, var(--cd-glint-2) 24%, transparent) 16%,
+      color-mix(in srgb, var(--cd-glint-3) 20%, transparent) 20%,
+      transparent 26% 47%,
+      color-mix(in srgb, white 20%, transparent) 50%,
+      transparent 53% 57%,
+      color-mix(in srgb, var(--cd-glint-3) 20%, transparent) 62%,
+      color-mix(in srgb, var(--cd-glint-2) 24%, transparent) 66%,
+      color-mix(in srgb, var(--cd-glint-1) 26%, transparent) 71%,
+      transparent 77% 97%,
+      color-mix(in srgb, white 14%, transparent) 100%
+    ),
+    radial-gradient(circle at 38% 22%, var(--shape-light), var(--shape) 45%, var(--shape-deep) 100%);
+  will-change: transform;
 }
 
 /* Орбита с двумя «спутниками» вокруг круга */
@@ -357,36 +372,6 @@ main {
 
 .block__list li:hover {
   letter-spacing: 0.12em;
-}
-
-/* Подсказка «листай вниз» */
-.scroll-cue {
-  position: absolute;
-  bottom: 1.25rem;
-  left: 50%;
-  z-index: 1;
-  width: 1px;
-  height: clamp(1.75rem, 5vh, 3rem);
-  overflow: hidden;
-  background: color-mix(in srgb, var(--text-on-shape) 22%, transparent);
-}
-
-.scroll-cue::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--text-on-shape);
-  animation: cue 2s var(--ease-out) infinite;
-}
-
-@keyframes cue {
-  0% {
-    transform: translateY(-100%);
-  }
-  60%,
-  100% {
-    transform: translateY(100%);
-  }
 }
 
 /* ---------- Секция 2 ---------- */
@@ -701,7 +686,8 @@ main {
   }
 
   .shape__disc,
+  .shape__cd,
   .player__toggle {
-    transform: none;
+    transform: none !important;
   }
 }

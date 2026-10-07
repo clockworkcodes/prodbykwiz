@@ -265,12 +265,14 @@ const player = (function initPlayer() {
   });
 })();
 
-/* ---------- Круги и курсор: реакция на мышь и на бит ---------- */
+/* ---------- Диск и курсор: реакция на мышь и на бит ---------- */
 
 (function initShapes() {
   if (reduceMotion) return;
 
   const discs = [...document.querySelectorAll('.shape__disc')];
+  const cd = document.querySelector('.shape__cd');
+  const SPIN_SPEED = 0.06; // градусов в миллисекунду на полном ходу (оборот за 6 секунд)
   const toggleBtn = document.querySelector('.player__toggle');
   const eqBars = [...document.querySelectorAll('.player__eq i')];
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -278,6 +280,9 @@ const player = (function initPlayer() {
   let cursor = null;
   let beat = 0;
   let lastState = '';
+  let spin = 0; // 0..1: диск плавно раскручивается и останавливается
+  let angle = 0;
+  let lastTime = performance.now();
   let eqActive = false;
 
   if (window.matchMedia('(pointer: fine)').matches) {
@@ -303,7 +308,10 @@ const player = (function initPlayer() {
     document.documentElement.addEventListener('pointerleave', () => cursor.classList.remove('is-visible'));
   }
 
-  const tick = () => {
+  const tick = (now) => {
+    const dt = Math.min(64, now - lastTime);
+    lastTime = now;
+
     pointer.x += (pointer.tx - pointer.x) * 0.06;
     pointer.y += (pointer.ty - pointer.y) * 0.06;
 
@@ -316,6 +324,13 @@ const player = (function initPlayer() {
     const levels = player && player.levels();
     const target = levels ? levels[0] : 0;
     beat += (target - beat) * (target > beat ? 0.5 : 0.12);
+
+    // CD крутится, пока играет бит
+    spin += ((levels ? 1 : 0) - spin) * 0.025;
+    if (cd && spin > 0.002) {
+      angle = (angle + spin * SPIN_SPEED * dt) % 360;
+      cd.style.transform = `rotate(${angle.toFixed(2)}deg)`;
+    }
 
     // Пишем в стили, только когда что-то реально изменилось
     const state = `${pointer.x.toFixed(1)} ${pointer.y.toFixed(1)} ${beat.toFixed(3)}`;
@@ -392,8 +407,7 @@ function splitText(el, byChar) {
   gsap.timeline({ defaults: { ease: 'expo.out' }, onStart: reveal, onComplete: enableLetterHover })
     .from('.shape', { yPercent: 12, scale: 0.8, transformOrigin: '50% 0%', duration: 2 })
     .from(chars, { yPercent: 80, rotation: 8, autoAlpha: 0, duration: 1.2, stagger: 0.05 }, 0.2)
-    .from('.hero .block', { y: 36, autoAlpha: 0, duration: 1.1, stagger: 0.14 }, 0.8)
-    .from('.scroll-cue', { autoAlpha: 0, duration: 1 }, 1.6);
+    .from('.hero .block', { y: 36, autoAlpha: 0, duration: 1.1, stagger: 0.14 }, 0.8);
 
   // Скролл: заголовок тонет в круге, линия смены цвета ползёт по буквам
   gsap.to(heroTitle, {
