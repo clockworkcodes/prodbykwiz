@@ -223,6 +223,30 @@ const player = (function initPlayer() {
   return { levels };
 })();
 
+/* ---------- Один круг на обе секции ----------
+   Верх круга проходит через заголовок первого экрана, низ — через фразу второго.
+   Размер зависит от высоты контента, поэтому считаем его и пересчитываем при ресайзе. */
+
+(function fitShape() {
+  const main = document.querySelector('main');
+  const heroWrap = document.querySelector('.hero .overlap');
+  const pathWrap = document.querySelector('.about .overlap');
+  if (!main || !heroWrap || !pathWrap) return;
+
+  const update = () => {
+    const origin = main.getBoundingClientRect().top;
+    const hero = heroWrap.getBoundingClientRect();
+    const path = pathWrap.getBoundingClientRect();
+    const top = hero.top - origin + hero.height * 0.57;
+    const bottom = path.top - origin + path.height * 0.67;
+    main.style.setProperty('--shape-top', `${top.toFixed(1)}px`);
+    main.style.setProperty('--shape-size', `${(bottom - top).toFixed(1)}px`);
+  };
+
+  update();
+  new ResizeObserver(update).observe(main);
+})();
+
 /* ---------- Мерцающие точки на фоне ---------- */
 
 (function initSparks() {
@@ -366,17 +390,12 @@ function splitText(el, byChar) {
 
   // Интро первого экрана
   gsap.timeline({ defaults: { ease: 'expo.out' }, onStart: reveal, onComplete: enableLetterHover })
-    .from('.hero .shape', { yPercent: 30, scale: 0.72, transformOrigin: '50% 0%', duration: 2 })
+    .from('.shape', { yPercent: 12, scale: 0.8, transformOrigin: '50% 0%', duration: 2 })
     .from(chars, { yPercent: 80, rotation: 8, autoAlpha: 0, duration: 1.2, stagger: 0.05 }, 0.2)
     .from('.hero .block', { y: 36, autoAlpha: 0, duration: 1.1, stagger: 0.14 }, 0.8)
     .from('.scroll-cue', { autoAlpha: 0, duration: 1 }, 1.6);
 
-  // Скролл: круг первого экрана поднимается и «съедает» заголовок
-  gsap.to('.hero .shape', {
-    y: () => -innerHeight * 0.26,
-    ease: 'none',
-    scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.6, invalidateOnRefresh: true },
-  });
+  // Скролл: заголовок тонет в круге, линия смены цвета ползёт по буквам
   gsap.to(heroTitle, {
     yPercent: 45,
     ease: 'none',
@@ -389,9 +408,9 @@ function splitText(el, byChar) {
     scrollTrigger: { trigger: '.hero', start: '35% top', end: 'bottom top', scrub: 0.6, invalidateOnRefresh: true },
   });
 
-  // Скролл: круг второго экрана опускается на заголовок
-  gsap.from('.about .shape', {
-    y: () => -innerHeight * 0.3,
+  // Скролл: фраза второго экрана всплывает из круга на его нижний край
+  gsap.from(pathTitle, {
+    y: () => -innerHeight * 0.16,
     ease: 'power2.out',
     scrollTrigger: { trigger: '.about', start: 'top bottom', end: 'top top', scrub: 0.6, invalidateOnRefresh: true },
   });

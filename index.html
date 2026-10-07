@@ -31,17 +31,20 @@
 
   <main>
 
+    <!-- Один круг на обе секции: верх пересекает заголовок, низ — фразу второго экрана.
+         Положение и размер подгоняет script.js -->
+    <div class="shape" aria-hidden="true">
+      <div class="shape__disc">
+        <span class="shape__orbit"></span>
+        <span class="shape__ring"></span>
+        <span class="shape__ring"></span>
+        <span class="shape__ring"></span>
+      </div>
+    </div>
+
     <!-- ===== СЕКЦИЯ 1 ===== -->
     <section class="screen hero">
       <div class="overlap">
-        <div class="shape" aria-hidden="true">
-          <div class="shape__disc">
-            <span class="shape__orbit"></span>
-            <span class="shape__ring"></span>
-            <span class="shape__ring"></span>
-            <span class="shape__ring"></span>
-          </div>
-        </div>
         <h1 class="giant giant--hero">prodbykwiz!</h1>
       </div>
 
@@ -84,14 +87,6 @@
       </div>
 
       <div class="overlap">
-        <div class="shape" aria-hidden="true">
-          <div class="shape__disc">
-            <span class="shape__orbit"></span>
-            <span class="shape__ring"></span>
-            <span class="shape__ring"></span>
-            <span class="shape__ring"></span>
-          </div>
-        </div>
         <p class="giant giant--path">im currently on the path to<br>realizing me dream.</p>
       </div>
 

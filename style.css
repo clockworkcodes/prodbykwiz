@@ -22,7 +22,9 @@
   --surface: color-mix(in srgb, var(--text-on-bg) 6%, transparent);
 
   --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --shape-size: max(104vw, 120vh);
+  /* Запасные размеры круга, если JS выключен (обычно их считает script.js) */
+  --shape-top: calc(clamp(4rem, 19vh, 13rem) + 7.4vw);
+  --shape-size: 126vh;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -85,29 +87,34 @@ ul {
 
 /* ---------- Экран ---------- */
 
-.screen {
+main {
   position: relative;
-  isolation: isolate; /* blend-эффект остаётся внутри секции */
+  isolation: isolate; /* blend-эффект заголовков остаётся внутри страницы */
   overflow: hidden;
   overflow: clip;
+  background: var(--bg);
+}
+
+.screen {
+  position: relative;
   min-height: 100vh;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--bg);
   text-align: center;
 }
 
-/* Обёртка: гигантский текст + полукруг, который он пересекает */
+/* Обёртка гигантского текста: по ней script.js ставит круг */
 .overlap {
   position: relative;
   width: 100%;
 }
 
-/* .shape двигает скролл, .shape__disc — курсор и бит */
+/* Один круг на всю страницу. .shape__disc двигают курсор и бит */
 .shape {
   position: absolute;
+  top: var(--shape-top);
   left: calc(50% - var(--shape-size) / 2);
   z-index: 0;
   width: var(--shape-size);
@@ -330,11 +337,6 @@ ul {
   padding: clamp(4rem, 19vh, 13rem) 0 clamp(3.5rem, 9vh, 6rem);
 }
 
-.hero .shape {
-  top: 57%;
-  margin-left: -2.5vw;
-}
-
 .giant--hero {
   cursor: default;
   font-size: 13vw;
@@ -396,15 +398,11 @@ ul {
 .about__cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  width: 90vw;
+  width: min(90vw, 110vh);
 }
 
 .about .overlap {
   margin-top: clamp(1.75rem, 6vh, 4rem);
-}
-
-.about .shape {
-  bottom: 33%;
 }
 
 .giant--path {
@@ -680,6 +678,7 @@ ul {
   .about__cols {
     grid-template-columns: 1fr;
     gap: 1.75rem;
+    width: 90vw;
   }
 
   .block__text {
