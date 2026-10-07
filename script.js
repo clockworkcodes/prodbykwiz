@@ -4,9 +4,9 @@
    (файл в репозитории, например "audio/beat-01.mp3", или полная ссылка https://...)
    ========================================================= */
 const TRACKS = [
-  { title: 'beat 01', src: 'audio/beat-01.mp3' },
-  { title: 'beat 02', src: 'audio/beat-02.mp3' },
-  { title: 'beat 03', src: 'audio/beat-03.mp3' },
+  { title: 'pusillanimous', src: 'audio/pusillanimous.mp3' },
+  { title: 'evil ways', src: 'audio/evil-ways.mp3' },
+  { title: 'senseless', src: 'audio/senseless.mp3' },
 ];
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
