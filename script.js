@@ -128,34 +128,36 @@ const player = (function initPlayer() {
     if (autoplay) play();
   };
 
-  // Анализатор звука для пульса круга и эквалайзера. Подключаем, только если все
-  // треки лежат на этом же сайте: иначе браузер из-за CORS отдаёт тишину.
-  const canAnalyse = location.protocol.startsWith('http')
-    && TRACKS.every((track) => new URL(track.src, location.href).origin === location.origin);
+  // Анализатор звука для пульса диска и эквалайзера. Слушаем копию потока (captureStream),
+  // а сам звук идёт напрямую из <audio>: плеер играет, даже если Web Audio недоступен.
+  // Где captureStream нет (Safari, Firefox), диск пульсирует в ровном условном ритме.
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const canAnalyse = typeof audio.captureStream === 'function' && Boolean(AudioCtx);
   let ctx = null;
+  let source = null;
+  let tappedSrc = '';
 
-  const connectAnalyser = () => {
-    if (!canAnalyse) return;
-    if (ctx) {
-      if (ctx.state === 'suspended') ctx.resume();
-      return;
-    }
+  const tapAudio = () => {
+    if (!canAnalyse || tappedSrc === audio.src) return;
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      ctx = new AudioCtx();
-      analyser = ctx.createAnalyser();
-      analyser.fftSize = 128;
-      analyser.smoothingTimeConstant = 0.75;
-      bins = new Uint8Array(analyser.frequencyBinCount);
-      ctx.createMediaElementSource(audio).connect(analyser);
-      analyser.connect(ctx.destination);
+      if (!ctx) {
+        ctx = new AudioCtx();
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 128;
+        analyser.smoothingTimeConstant = 0.75;
+        bins = new Uint8Array(analyser.frequencyBinCount);
+      }
+      if (source) source.disconnect();
+      source = ctx.createMediaStreamSource(audio.captureStream());
+      source.connect(analyser);
+      tappedSrc = audio.src;
     } catch (error) {
-      analyser = null;
+      // Поток не дали прослушать — останется условный ритм, звук это не затрагивает
     }
   };
 
   const play = () => {
-    connectAnalyser();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
     audio.play().catch(() => setPlaying(false));
   };
 
@@ -189,6 +191,7 @@ const player = (function initPlayer() {
     render();
   });
   audio.addEventListener('play', () => setPlaying(true));
+  audio.addEventListener('playing', tapAudio);
   audio.addEventListener('pause', () => setPlaying(false));
   audio.addEventListener('ended', () => {
     if (TRACKS.length > 1) load(index + 1, true);
@@ -213,7 +216,10 @@ const player = (function initPlayer() {
         for (let i = from; i < to; i++) sum += bins[i];
         return Math.min(1, (sum / (to - from) / 255) * 1.5);
       };
-      return [band(0, 4) / 1.5, band(1, 5), band(5, 12), band(12, 24), band(24, 44)];
+      // Пустой спектр — поток не слышен анализатору, тогда ниже включится условный ритм
+      if (bins.some((value) => value > 0)) {
+        return [band(0, 4) / 1.5, band(1, 5), band(5, 12), band(12, 24), band(24, 44)];
+      }
     }
     const t = audio.currentTime;
     const kick = Math.pow(Math.abs(Math.sin(t * Math.PI * 2.3)), 6);
