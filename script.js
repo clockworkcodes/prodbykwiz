@@ -241,7 +241,7 @@ const player = (function initPlayer() {
   const aboutCols = document.querySelector('.about__cols');
   if (!main || !heroWrap || !pathWrap || !heroBlocks || !aboutCols) return;
 
-  const HUB_RATIO = 0.156; // радиус втулки в долях радиуса диска (см. .shape__cd в style.css)
+  const HUB_RATIO = 0.12; // радиус втулки в долях радиуса диска (см. .shape__cd в style.css)
   const HUB_MARGIN = 16;
 
   // Положение по вертикали внутри <main> без учёта transform-анимаций
@@ -285,9 +285,9 @@ const player = (function initPlayer() {
 
 (function initSparks() {
   document.querySelectorAll('.screen').forEach((screen) => {
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 20; i++) {
       const spark = document.createElement('span');
-      spark.className = 'spark';
+      spark.className = i % 3 === 0 ? 'spark spark--twinkle' : 'spark';
       spark.setAttribute('aria-hidden', 'true');
       spark.style.left = `${(Math.random() * 100).toFixed(1)}%`;
       spark.style.top = `${(Math.random() * 100).toFixed(1)}%`;
@@ -299,24 +299,30 @@ const player = (function initPlayer() {
   });
 })();
 
-/* ---------- Диск и курсор: реакция на мышь и на бит ---------- */
+/* ---------- Диск и курсор: реакция на мышь и на бит ----------
+   Один цикл requestAnimationFrame. Меняем только transform (его считает видеокарта,
+   без перерисовки) и пишем в стили, только когда значение реально изменилось. */
 
 (function initShapes() {
   if (reduceMotion) return;
 
-  const discs = [...document.querySelectorAll('.shape__disc')];
+  const root = document.documentElement;
+  const disc = document.querySelector('.shape__disc');
   const cd = document.querySelector('.shape__cd');
-  const SPIN_SPEED = 0.06; // градусов в миллисекунду на полном ходу (оборот за 6 секунд)
   const toggleBtn = document.querySelector('.player__toggle');
   const eqBars = [...document.querySelectorAll('.player__eq i')];
+  const SPIN_SPEED = 0.06; // градусов в миллисекунду на полном ходу (оборот за 6 секунд)
+
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   const ring = { x: 0, y: 0, tx: 0, ty: 0 };
   let cursor = null;
   let beat = 0;
-  let lastState = '';
   let spin = 0; // 0..1: диск плавно раскручивается и останавливается
   let angle = 0;
-  let lastTime = performance.now();
+  let lastTime = 0;
+  let lastDisc = '';
+  let lastRing = '';
+  let lastBeat = '';
   let eqActive = false;
 
   if (window.matchMedia('(pointer: fine)').matches) {
@@ -338,26 +344,42 @@ const player = (function initPlayer() {
       }
       const target = event.target;
       cursor.classList.toggle('is-active', Boolean(target.closest && target.closest('a, button, input, .giant .split')));
-    });
-    document.documentElement.addEventListener('pointerleave', () => cursor.classList.remove('is-visible'));
+    }, { passive: true });
+    root.addEventListener('pointerleave', () => cursor.classList.remove('is-visible'));
   }
 
+  // Следим за частотой кадров первые секунды. Если устройство не тянет —
+  // включаем облегчённый режим (см. .lite в style.css) и больше не проверяем.
+  const probe = { frames: 0, slow: 0, skip: 150, done: false };
+  const watchFrameRate = (dt) => {
+    if (probe.done || document.hidden) return;
+    if (probe.skip > 0) return void probe.skip--;
+    probe.frames++;
+    if (dt > 22) probe.slow++;
+    if (probe.frames < 180) return;
+    probe.done = true;
+    if (probe.slow / probe.frames > 0.3) root.classList.add('lite');
+  };
+
   const tick = (now) => {
-    const dt = Math.min(64, now - lastTime);
+    const dt = lastTime ? Math.min(64, now - lastTime) : 16;
     lastTime = now;
+    watchFrameRate(dt);
+    const lite = root.classList.contains('lite');
 
-    pointer.x += (pointer.tx - pointer.x) * 0.06;
-    pointer.y += (pointer.ty - pointer.y) * 0.06;
-
-    if (cursor) {
-      ring.x += (ring.tx - ring.x) * 0.2;
-      ring.y += (ring.ty - ring.y) * 0.2;
-      cursor.style.transform = `translate3d(${ring.x.toFixed(1)}px, ${ring.y.toFixed(1)}px, 0)`;
-    }
-
+    // Диск: лёгкий сдвиг за курсором и пульс под бас
     const levels = player && player.levels();
     const target = levels ? levels[0] : 0;
     beat += (target - beat) * (target > beat ? 0.5 : 0.12);
+    if (!lite) {
+      pointer.x += (pointer.tx - pointer.x) * 0.06;
+      pointer.y += (pointer.ty - pointer.y) * 0.06;
+    }
+    const discTransform = `translate3d(${pointer.x.toFixed(1)}px, ${pointer.y.toFixed(1)}px, 0) scale(${(1 + beat * 0.03).toFixed(4)})`;
+    if (disc && discTransform !== lastDisc) {
+      lastDisc = discTransform;
+      disc.style.transform = discTransform;
+    }
 
     // CD крутится, пока играет бит
     spin += ((levels ? 1 : 0) - spin) * 0.025;
@@ -366,16 +388,22 @@ const player = (function initPlayer() {
       cd.style.transform = `rotate(${angle.toFixed(2)}deg)`;
     }
 
-    // Пишем в стили, только когда что-то реально изменилось
-    const state = `${pointer.x.toFixed(1)} ${pointer.y.toFixed(1)} ${beat.toFixed(3)}`;
-    if (state !== lastState) {
-      lastState = state;
-      discs.forEach((disc) => {
-        disc.style.setProperty('--mx', pointer.x.toFixed(1));
-        disc.style.setProperty('--my', pointer.y.toFixed(1));
-        disc.style.setProperty('--beat', beat.toFixed(3));
-      });
-      if (toggleBtn) toggleBtn.style.setProperty('--beat', beat.toFixed(3));
+    // Кольцо за курсором
+    if (cursor && !lite) {
+      ring.x += (ring.tx - ring.x) * 0.2;
+      ring.y += (ring.ty - ring.y) * 0.2;
+      const ringTransform = `translate3d(${ring.x.toFixed(1)}px, ${ring.y.toFixed(1)}px, 0)`;
+      if (ringTransform !== lastRing) {
+        lastRing = ringTransform;
+        cursor.style.transform = ringTransform;
+      }
+    }
+
+    // Кнопка play и эквалайзер
+    const beatValue = beat.toFixed(3);
+    if (toggleBtn && beatValue !== lastBeat) {
+      lastBeat = beatValue;
+      toggleBtn.style.setProperty('--beat', beatValue);
     }
     if (levels || eqActive) {
       eqActive = Boolean(levels);

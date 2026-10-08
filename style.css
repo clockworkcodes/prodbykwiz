@@ -68,8 +68,7 @@ body::after {
   inset: 0;
   z-index: 10;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.16;
-  mix-blend-mode: overlay;
+  opacity: 0.05;
   pointer-events: none;
 }
 
@@ -131,10 +130,8 @@ main {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  transform: translate3d(calc(var(--mx, 0) * 1px), calc(var(--my, 0) * 1px), 0)
-    scale(calc(1 + var(--beat, 0) * 0.03));
-  will-change: transform;
-  box-shadow: 0 0 10vw color-mix(in srgb, var(--shape) 20%, transparent);
+  will-change: transform; /* transform пишет script.js: сдвиг за курсором и пульс */
+  box-shadow: 0 0 6vw color-mix(in srgb, var(--shape) 22%, transparent);
 }
 
 /* Поверхность диска. Слои сверху вниз: отверстие и прозрачная втулка, кромка,
@@ -149,13 +146,13 @@ main {
   background:
     radial-gradient(
       circle closest-side,
-      var(--bg) 0 6.6%,
-      var(--hub-line) 6.6% 7%,
-      var(--hub) 7% 12.6%,
-      var(--hub-line) 12.6% 12.9%,
-      var(--hub) 12.9% 15.2%,
-      var(--hub-line) 15.2% 15.6%,
-      transparent 15.6% 98.6%,
+      var(--bg) 0 5%,
+      var(--hub-line) 5% 5.3%,
+      var(--hub) 5.3% 9.6%,
+      var(--hub-line) 9.6% 9.8%,
+      var(--hub) 9.8% 11.7%,
+      var(--hub-line) 11.7% 12%,
+      transparent 12% 98.6%,
       color-mix(in srgb, white 30%, transparent) 98.6% 100%
     ),
     repeating-radial-gradient(circle, transparent 0 15px, color-mix(in srgb, var(--text-on-shape) 8%, transparent) 15px 16px),
@@ -170,8 +167,7 @@ main {
       color-mix(in srgb, var(--cd-glint-3) 20%, transparent) 62%,
       color-mix(in srgb, var(--cd-glint-2) 24%, transparent) 66%,
       color-mix(in srgb, var(--cd-glint-1) 26%, transparent) 71%,
-      transparent 77% 97%,
-      color-mix(in srgb, white 14%, transparent) 100%
+      transparent 77% 100%
     ),
     radial-gradient(circle at 38% 22%, var(--shape-light), var(--shape) 45%, var(--shape-deep) 100%);
   will-change: transform;
@@ -183,7 +179,6 @@ main {
   inset: -3.2%;
   border: 1px dashed color-mix(in srgb, var(--text-on-bg) 34%, transparent);
   border-radius: 50%;
-  animation: spin 240s linear infinite;
 }
 
 .shape__orbit::before,
@@ -207,12 +202,6 @@ main {
   bottom: -5px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* Мерцающие точки на фоне (расставляет script.js) */
 .spark {
   position: absolute;
@@ -221,6 +210,11 @@ main {
   height: var(--size);
   border-radius: 50%;
   background: var(--text-on-bg);
+  opacity: 0.35;
+}
+
+/* Мерцает только часть точек: каждая анимация — отдельный слой для видеокарты */
+.spark--twinkle {
   opacity: 0.25;
   animation: twinkle var(--dur) ease-in-out var(--delay) infinite alternate;
 }
@@ -242,14 +236,14 @@ main {
   height: 2.25rem;
   margin: -1.125rem 0 0 -1.125rem;
   pointer-events: none;
-  mix-blend-mode: difference;
+  will-change: transform;
 }
 
 .cursor::before {
   content: "";
   position: absolute;
   inset: 0;
-  border: 1px solid var(--title-blend);
+  border: 1px solid var(--text-on-bg);
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.3s ease, scale 0.45s var(--ease-out), background-color 0.3s ease;
@@ -261,10 +255,10 @@ main {
 
 .cursor.is-active::before {
   scale: 1.9;
-  background: color-mix(in srgb, var(--title-blend) 22%, transparent);
+  background: color-mix(in srgb, var(--text-on-bg) 22%, transparent);
 }
 
-/* Кольца-волны: расходятся от круга, пока играет бит */
+/* Кольцо-волна: расходится от диска, пока играет бит */
 .shape__ring {
   position: absolute;
   inset: 0;
@@ -274,15 +268,7 @@ main {
 }
 
 .is-playing .shape__ring {
-  animation: ripple 2.7s linear infinite;
-}
-
-.is-playing .shape__ring:nth-of-type(3) {
-  animation-delay: 0.9s;
-}
-
-.is-playing .shape__ring:nth-of-type(4) {
-  animation-delay: 1.8s;
+  animation: ripple 2.4s ease-out infinite;
 }
 
 @keyframes ripple {
@@ -676,6 +662,28 @@ main {
   }
 }
 
+/* ---------- Облегчённый режим ----------
+   script.js включает его сам (класс lite на <html>), если устройство не держит
+   плавные 45+ кадров в секунду: убираем всё декоративное и тяжёлое для видеокарты. */
+
+.lite body::after,
+.lite .shape__ring,
+.lite .cursor {
+  display: none;
+}
+
+.lite .giant {
+  text-shadow: none;
+}
+
+.lite .shape__disc {
+  box-shadow: none;
+}
+
+.lite .spark--twinkle {
+  animation: none;
+}
+
 /* ---------- Без анимаций ---------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -686,9 +694,7 @@ main {
     transition-duration: 0.01ms !important;
   }
 
-  .shape__disc,
-  .shape__cd,
   .player__toggle {
-    transform: none !important;
+    transform: none;
   }
 }
