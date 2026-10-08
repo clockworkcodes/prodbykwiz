@@ -214,11 +214,11 @@ const player = (function initPlayer() {
       const band = (from, to) => {
         let sum = 0;
         for (let i = from; i < to; i++) sum += bins[i];
-        return Math.min(1, (sum / (to - from) / 255) * 1.5);
+        return Math.pow(sum / (to - from) / 255, 2.2); // степень растягивает громкие треки, иначе столбики упираются в потолок
       };
       // Пустой спектр — поток не слышен анализатору, тогда ниже включится условный ритм
       if (bins.some((value) => value > 0)) {
-        return [band(0, 4) / 1.5, band(1, 5), band(5, 12), band(12, 24), band(24, 44)];
+        return [band(0, 4), band(1, 5), band(5, 12), band(12, 24), band(24, 44)];
       }
     }
     const t = audio.currentTime;
@@ -354,6 +354,7 @@ const player = (function initPlayer() {
   const watchFrameRate = (dt) => {
     if (probe.done || document.hidden) return;
     if (probe.skip > 0) return void probe.skip--;
+    if (dt > 100) return; // вкладка в фоне или окно перекрыто — это не слабое устройство
     probe.frames++;
     if (dt > 22) probe.slow++;
     if (probe.frames < 180) return;
@@ -362,9 +363,10 @@ const player = (function initPlayer() {
   };
 
   const tick = (now) => {
-    const dt = lastTime ? Math.min(64, now - lastTime) : 16;
+    const elapsed = lastTime ? now - lastTime : 16;
+    const dt = Math.min(64, elapsed);
     lastTime = now;
-    watchFrameRate(dt);
+    watchFrameRate(elapsed);
     const lite = root.classList.contains('lite');
 
     // Диск: лёгкий сдвиг за курсором и пульс под бас
